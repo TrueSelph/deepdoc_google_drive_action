@@ -2,7 +2,7 @@
 
 import io
 import logging
-from typing import Any, Optional
+from typing import Any, Dict, List, Optional
 
 from google.oauth2 import service_account
 from googleapiclient.discovery import build
@@ -213,7 +213,9 @@ class GoogleDriveHandler:
             logger.error(f"Unexpected error stopping channel {channel_id}: {e}")
             return {"error": str(e)}
 
-    def get_initial_start_page_token(self, drive_id: str = "") -> Optional[str]:
+    def get_initial_start_page_token(
+        self, drive_id: Optional[str] = None
+    ) -> Optional[str]:
         """
         Gets the starting page token for listing future changes.
         This token represents the current state of the account.
@@ -253,38 +255,40 @@ class GoogleDriveHandler:
 
     def get_latest_changes(
         self,
-        page_token: str,
-        drive_id: str = "",
+        page_token: str,  # Input page_token must be a string
+        drive_id: Optional[str] = None,
         fields: str = "nextPageToken, newStartPageToken, changes(fileId, time, removed, teamDriveId, driveId, file(id, name, mimeType, parents, modifiedTime, trashed))",
-    ) -> tuple[Optional[list[dict[str, Any]]], str]:
+    ) -> tuple[Optional[List[Dict[str, Any]]], str]:  # Return type for token is str
         """
         Lists all changes since the last provided page token.
         Handles pagination internally to retrieve all changes in the current batch.
-        :param page_token: The pageToken from which to retrieve changes (initially from get_initial_start_page_token()
-                           or newStartPageToken from a previous call to this method).
+        :param page_token: The pageToken from which to retrieve changes.
         :param drive_id: Optional ID of the Shared Drive to list changes for.
         :param fields: The fields to include in the change resources.
         :return: A tuple: (list_of_changes, new_start_page_token_for_next_call).
-                 Returns (None, page_token) if an error occurs, so the original token can be reused for a retry.
+                 Returns (None, page_token) if an error occurs.
         """
-        if not self.is_healthy():
+        if (
+            not self.is_healthy() or self.service is None
+        ):  # Added self.service is None for mypy
             logger.error("Google Drive service not initialized. Cannot get changes.")
-            return None, page_token  # Return original token for potential retry
+            return None, page_token
 
-        all_changes = []
-        current_page_token = page_token
-        new_start_page_token_for_next_call = (
-            page_token  # Default to original if no changes or error
-        )
+        all_changes: List[Dict[str, Any]] = []
+        current_page_token: Optional[str] = page_token
+
+        # Initialize new_start_page_token_for_next_call with the current page_token.
+        # It will only be updated if a valid new token is received from the API.
+        new_start_page_token_for_next_call: str = page_token
 
         try:
             while current_page_token is not None:
-                request_args = {
+                request_args: Dict[str, Any] = {  # Explicitly type request_args
                     "pageToken": current_page_token,
-                    "spaces": "drive",  # Important: 'drive' space includes My Drive and Shared Drives
+                    "spaces": "drive",
                     "fields": fields,
-                    "includeRemoved": True,  # Typically you want to know about removals
-                    "supportsAllDrives": True,  # Recommended for comprehensive change tracking
+                    "includeRemoved": True,
+                    "supportsAllDrives": True,
                 }
                 if drive_id:
                     request_args["driveId"] = drive_id
@@ -292,40 +296,50 @@ class GoogleDriveHandler:
                 logger.debug(f"Fetching changes with pageToken: {current_page_token}")
                 response = self.service.changes().list(**request_args).execute()
 
-                changes_in_page = response.get("changes", [])
+                changes_in_page: List[Dict[str, Any]] = response.get(
+                    "changes", []
+                )  # Explicitly type
                 all_changes.extend(changes_in_page)
                 logger.info(
                     f"Fetched {len(changes_in_page)} changes in this page. Total so far: {len(all_changes)}."
                 )
 
-                if "nextPageToken" in response and response["nextPageToken"]:
-                    current_page_token = response.get("nextPageToken")
+                # Update new_start_page_token_for_next_call if a new one is provided in this response page
+                potential_new_start_token: Optional[str] = response.get(
+                    "newStartPageToken"
+                )
+                if potential_new_start_token is not None:
+                    new_start_page_token_for_next_call = potential_new_start_token
+
+                # Determine the token for the next page *within the current batch of changes*
+                next_page_for_this_batch: Optional[str] = response.get("nextPageToken")
+                if next_page_for_this_batch:
+                    current_page_token = next_page_for_this_batch
                     logger.debug(
-                        f"More changes available, next page token: {current_page_token}"
+                        f"More changes available in this batch, next page token: {current_page_token}"
                     )
                 else:
-                    # No more pages in this batch, get the token for the *next* poll
-                    new_start_page_token_for_next_call = response.get(
-                        "newStartPageToken"
-                    )
+                    # This was the last page of the current batch of changes
                     logger.info(
-                        f"End of changes for this batch. New startPageToken for next poll: {new_start_page_token_for_next_call}"
+                        f"End of changes for this batch. New startPageToken for the *next poll* will be: {new_start_page_token_for_next_call}"
                     )
-                    current_page_token = ""  # Exit loop
+                    current_page_token = None  # Exit the while loop
 
-            return all_changes, new_start_page_token_for_next_call
+            return (
+                all_changes,
+                new_start_page_token_for_next_call,
+            )  # new_start_page_token_for_next_call is guaranteed str
 
         except HttpError as error:
             logger.error(
-                f"An API error occurred while listing changes: {error}. Last used pageToken: {page_token}"
+                f"An API error occurred while listing changes: {error}. Initial pageToken for this call: {page_token}"
             )
-            # Return the original page_token so the caller can decide to retry with it
-            return None, page_token
+            return None, page_token  # page_token is str
         except Exception as e:
             logger.error(
-                f"Unexpected error listing changes: {e}. Last used pageToken: {page_token}"
+                f"Unexpected error listing changes: {e}. Initial pageToken for this call: {page_token}"
             )
             return None, page_token
 
-    # You can add more methods like create_folder, upload_file if needed for other functionalities
+    # page_token is str# You can add more methods like create_folder, upload_file if needed for other functionalities
     # For now, focusing on reading for ingestion.
