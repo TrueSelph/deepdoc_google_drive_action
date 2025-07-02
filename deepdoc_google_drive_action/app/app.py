@@ -4,9 +4,7 @@ import json
 import math
 
 import streamlit as st
-from jvclient.lib.utils import (
-    call_action_walker_exec,  # Only this one is needed now
-)
+from jvclient.lib.utils import call_action_walker_exec  # Only this one is needed now
 from jvclient.lib.widgets import app_header, app_update_action
 
 
