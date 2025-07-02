@@ -1,20 +1,19 @@
-import:py logging;
-import:py traceback;
-import:py os;
-import:py json; # For metadata string conversion if needed
-import:py uuid; # For generating Jiva channel UUIDs
-import:py time; # For expiration calculations
-import:py from logging { Logger }
-import:py from datetime { datetime, timedelta, timezone } # For expiration calculations
-import:py from typing { Union, List, Dict, Optional }
-import:jac from jivas.agent.action.action { Action }
-import:jac from jivas.agent.action.interact_graph_walker { interact_graph_walker }
-import:py from .modules.google_drive_handler { GoogleDriveHandler }
-import:py from jivas.agent.modules.agentlib.utils { Utils }
-import:py from jvserve.lib.agent_interface { AgentInterface } # For webhook key generation
+import logging;
+import os;
+import json; # For metadata string conversion if needed
+import uuid; # For generating Jiva channel UUIDs
+import time; # For expiration calculations
+import from logging { Logger }
+import from datetime { datetime, timedelta, timezone } # For expiration calculations
+import from typing { Union, List, Dict, Optional }
+import from jivas.agent.action.action { Action }
+import from jivas.agent.action.interact_graph_walker { interact_graph_walker }
+import from .modules.google_drive_handler { GoogleDriveHandler }
+import from jivas.agent.modules.agentlib.utils { Utils }
+import from jvserve.lib.agent_interface { AgentInterface } # For webhook key generation
 
 
-node DeepDocGoogleDriveAction :Action: {
+node DeepDocGoogleDriveAction(Action) {
     has description:str = "Integrates with Google Drive to ingest documents into DeepDoc.";
     has scopes:list = ["https://www.googleapis.com/auth/drive.readonly"]; # Start with readonly, expand if needed
     has default_folder_id:str = ""; # Can be overridden by agent config
@@ -49,13 +48,13 @@ node DeepDocGoogleDriveAction :Action: {
     # --- Internal State (Logger only) ---
     static has logger:Logger = logging.getLogger(__name__);
 
-    can on_register() {
+    def on_register() {
         if self.enabled {
             self.on_enable();
         }
     }
 
-    can on_enable() { # Called when agent becomes active or action is enabled
+    def on_enable() { # Called when agent becomes active or action is enabled
         self.logger.info("DeepDocGoogleDriveAction enabled. Initializing...");
 
         if(not self.page_token) {
@@ -80,7 +79,7 @@ node DeepDocGoogleDriveAction :Action: {
         self.start_pulse_scheduler();
     }
 
-    can on_disable() {
+    def on_disable() {
         self.logger.info("DeepDocGoogleDriveAction disabling. Stopping pulse and watches.");
         self.stop_pulse_scheduler();
         jiva_uuids_to_stop = list(self.active_watch_channels.keys());
@@ -90,7 +89,7 @@ node DeepDocGoogleDriveAction :Action: {
         self.active_watch_channels = {};
     }
 
-    can get_drive_handler() -> Optional[GoogleDriveHandler] {
+    def get_drive_handler() -> Optional[GoogleDriveHandler] {
         credentials_info = {
             "type": self.info_type, "project_id": self.project_id,
             "private_key_id": self.private_key_id, "private_key": self.private_key.replace('\\n', '\n'),
@@ -110,7 +109,7 @@ node DeepDocGoogleDriveAction :Action: {
         }
     }
 
-    can get_deepdoc_action() {
+    def get_deepdoc_action() {
         dd_action = self.get_agent().get_actions().get(action_label=self.deepdoc_action_label);
         if (not dd_action) {
             self.logger.error(f"DeepDocClientAction '{self.deepdoc_action_label}' not found.");
@@ -119,7 +118,7 @@ node DeepDocGoogleDriveAction :Action: {
         return dd_action;
     }
 
-    can start_watching_resource(gdrive_resource_id: str, resource_type: str, webhook_base_url: Optional[str] = None) -> Dict {
+    def start_watching_resource(gdrive_resource_id: str, resource_type: str, webhook_base_url: Optional[str] = None) -> Dict {
         # resource_type: 'file' or 'folder' (this is for our tracking, Google API always uses fileId)
         effective_webhook_base_url = webhook_base_url if webhook_base_url else self.default_webhook_base_url;
         if (not effective_webhook_base_url) {
@@ -193,7 +192,7 @@ node DeepDocGoogleDriveAction :Action: {
         }
     }
 
-    can stop_watching_resource(jiva_channel_uuid: str, initiated_by_user: bool = False) -> Dict {
+    def stop_watching_resource(jiva_channel_uuid: str, initiated_by_user: bool = False) -> Dict {
         drive_handler = self.get_drive_handler();
         if (not drive_handler) {
             return {"status": "failed", "message": "Google Drive Handler not available."};
@@ -235,7 +234,7 @@ node DeepDocGoogleDriveAction :Action: {
         }
     }
 
-    can renew_watch_channel(jiva_channel_uuid: str) -> Dict {
+    def renew_watch_channel(jiva_channel_uuid: str) -> Dict {
         watch_info = self.active_watch_channels.get(jiva_channel_uuid);
         if (not watch_info) {
             self.logger.warning(f"Cannot renew non-existent Jiva watch UUID: {jiva_channel_uuid}");
@@ -260,7 +259,7 @@ node DeepDocGoogleDriveAction :Action: {
         );
     }
 
-    can list_active_watches() -> List[Dict] {
+    def list_active_watches() -> List[Dict] {
         return [
             {
                 "jiva_channel_uuid": j_uuid,
@@ -272,7 +271,7 @@ node DeepDocGoogleDriveAction :Action: {
         ];
     }
 
-    can pulse() {
+    def pulse() {
         self.logger.debug(f"Pulse: Checking {len(self.active_watch_channels)} GDrive watches.");
         current_time_ms = int(datetime.now(timezone.utc).timestamp() * 1000);
         renew_limit_ms = current_time_ms + (self.renew_threshold_hours * 3600 * 1000);
@@ -288,7 +287,7 @@ node DeepDocGoogleDriveAction :Action: {
         self.logger.debug("Pulse check for GDrive watches complete.");
     }
 
-    can recover_watches(webhook_base_url: Optional[str] = None) -> Dict {
+    def recover_watches(webhook_base_url: Optional[str] = None) -> Dict {
         self.logger.info(f"Recovering watches for {len(self.watched_gdrive_resources)} DAF-configured resources.");
         results = {"succeeded": [], "failed": []};
         base_url = webhook_base_url if webhook_base_url else self.default_webhook_base_url;
@@ -320,7 +319,7 @@ node DeepDocGoogleDriveAction :Action: {
         return results;
     }
 
-    can start_pulse_scheduler() {
+    def start_pulse_scheduler() {
         if (pulse_action := self.get_agent().get_actions().get(action_label="PulseAction")) {
             action_node_label = self.label; # Get the label of this action instance
             interval_string = f'every({self.pulse_interval_seconds}).seconds';
@@ -339,7 +338,7 @@ node DeepDocGoogleDriveAction :Action: {
         }
     }
 
-    can stop_pulse_scheduler() {
+    def stop_pulse_scheduler() {
         if (pulse_action := self.get_agent().get_actions().get(action_label="PulseAction")) {
             action_node_label = self.label; # Get the label of this action instance
             pulse_action.remove_schedule(action_label=action_node_label); # Use action_label here
@@ -347,7 +346,7 @@ node DeepDocGoogleDriveAction :Action: {
         }
     }
 
-    can ingest_drive_items(drive_ids: List[str], item_type: str = "file", user_metadata: Optional[dict] = None) -> dict {
+    def ingest_drive_items(drive_ids: List[str], item_type: str = "file", user_metadata: Optional[dict] = None) -> dict {
         results = {"succeeded_deepdoc": [], "failed_deepdoc": [], "job_ids": [], "watches_managed": []};
         drive_handler = self.get_drive_handler();
         deepdoc_action = self.get_deepdoc_action();
@@ -422,7 +421,6 @@ node DeepDocGoogleDriveAction :Action: {
                     "source_system": "google_drive",
                     "google_drive_file_id": processed_file_detail["id"],
                     "google_drive_filename": processed_file_detail["name"],
-                    # "google_drive_mimetype": files_for_deepdoc_payload[i]["type"], # Redundant but we can still add since DeepDoc action takes type
                     "google_drive_folder_id": processed_file_detail["parent_folder_id_of_file"]
                 };
                 if (user_metadata) { metadata.update(user_metadata); }
@@ -490,7 +488,7 @@ node DeepDocGoogleDriveAction :Action: {
         return results;
     }
 
-    can remove_drive_item_from_vector_store(google_drive_file_id: str) -> Dict {
+    def remove_drive_item_from_vector_store(google_drive_file_id: str) -> Dict {
         result = {"status": "failed", "message": "", "watch_management_status": "not_attempted"};
         deepdoc_action = self.get_deepdoc_action();
         if (not deepdoc_action) { result["message"] = "DeepDoc action not found."; return result;}
@@ -562,7 +560,7 @@ node DeepDocGoogleDriveAction :Action: {
         return result;
     }
 
-    can remove_drive_folder_from_vector_store(google_drive_folder_id: str) -> Dict {
+    def remove_drive_folder_from_vector_store(google_drive_folder_id: str) -> Dict {
         results = {"deleted_files": [], "failed_to_delete_from_deepdoc": [], "watches_stopped": [], "watches_failed_to_stop": [], "message": ""};
         deepdoc_action = self.get_deepdoc_action();
         if (not deepdoc_action) {
@@ -635,7 +633,7 @@ node DeepDocGoogleDriveAction :Action: {
         return results;
     }
 
-    can _get_gdrive_id_from_resource_uri(resource_uri: str) -> Optional[str] {
+    def _get_gdrive_id_from_resource_uri(resource_uri: str) -> Optional[str] {
         # Helper to extract the GDrive ID from X-Goog-Resource-URI
         # Example URI: https://www.googleapis.com/drive/v3/files/FILE_ID?alt=json
         # Example URI for changes API: https://www.googleapis.com/drive/v3/changes/CHANGE_ID?alt=json (less useful here)
@@ -657,7 +655,7 @@ node DeepDocGoogleDriveAction :Action: {
         return None;
     }
 
-    can process_drive_notification(headers: Dict, body_str: str) {
+    def process_drive_notification(headers: Dict, body_str: str) {
         drive_handler = self.get_drive_handler();
         if (not drive_handler) {
             return {"status": "failed", "message": "Google Drive Handler not available."};
@@ -807,7 +805,7 @@ node DeepDocGoogleDriveAction :Action: {
 
     }
 
-    can _is_folder_still_represented_in_deepdoc(folder_gdrive_id: str) -> bool {
+    def _is_folder_still_represented_in_deepdoc(folder_gdrive_id: str) -> bool {
         # Helper to check if any files from a given folder_gdrive_id are still in DeepDoc
         deepdoc_action = self.get_deepdoc_action();
         if (not deepdoc_action) { return False; } # Assume not, if DeepDoc is unavailable
@@ -821,7 +819,7 @@ node DeepDocGoogleDriveAction :Action: {
         return False; # No files from this folder found
     }
 
-    can healthcheck() -> Union[bool, Dict] {
+    def healthcheck() -> Union[bool, Dict] {
         drive_handler = self.get_drive_handler();
         if (not drive_handler) {
             return { "status": False, "message": "GDrive Handler failed to initialize.", "severity": "error"};
@@ -846,13 +844,13 @@ node DeepDocGoogleDriveAction :Action: {
         }
     }
 
-    can list_gdrive_folder_contents(folder_id: str) -> List {
+    def list_gdrive_folder_contents(folder_id: str) -> List {
         drive_handler = self.get_drive_handler();
         if (not drive_handler) { return [{"error": "Drive Handler not ready"}]; }
         return drive_handler.list_files_in_folder(folder_id=folder_id if folder_id else self.default_folder_id);
     }
 
-    can get_ingested_documents_from_drive() -> List {
+    def get_ingested_documents_from_drive() -> List {
         deepdoc_action = self.get_deepdoc_action();
         if (not deepdoc_action) { return [{"error": "DeepDoc action not found."}]; }
         all_docs = deepdoc_action.get_doc_entries();

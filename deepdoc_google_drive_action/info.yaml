@@ -1,8 +1,8 @@
 package:
   name: jivas/deepdoc_google_drive_action
   author: AA
-  architype: DeepDocGoogleDriveAction
-  version: 0.0.3 # Latest
+  archetype: DeepDocGoogleDriveAction
+  version: 0.1.0
   meta:
     title: DeepDoc Google Drive Integration Action (with Watcher)
     description: Ingests, manages, and watches documents/folders from Google Drive using DeepDoc client for vector storage and processing. Reacts to GDrive changes.
@@ -53,7 +53,7 @@ package:
     universe_domain: "googleapis.com"
 
   dependencies:
-    jivas: ^2.0.0
+    jivas: ~2.1.0
     actions:
-      jivas/deepdoc_client_action: ^0.0.1 # Critical dependency for DeepDoc operations
-      jivas/pulse_action: ^0.0.1         # Also Critical for scheduling watch renewal
+      jivas/deepdoc_client_action: ~0.1.0
+      jivas/pulse_action: ~0.1.0

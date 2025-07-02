@@ -1,9 +1,10 @@
-# Imports
-include:jac deepdoc_google_drive_action;
-include:jac ingest_gdrive_items_walker;
-include:jac remove_gdrive_item_walker;
-include:jac clear_gdrive_folder_walker;
-include:jac list_gdrive_folder_contents_walker;
-include:jac get_ingested_gdrive_docs_walker;
-include:jac gdrive_notification_receiver_walker;
-include:jac manage_gdrive_watch_walker;
+import from actions.jivas.deepdoc_google_drive_action {
+    deepdoc_google_drive_action,
+    ingest_gdrive_items,
+    remove_gdrive_item,
+    clear_gdrive_folder,
+    list_gdrive_folder_contents,
+    get_ingested_gdrive_docs,
+    gdrive_notification_receiver,
+    manage_gdrive_watch
+}

@@ -1,12 +1,14 @@
-import:py logging;
-import:py json; # If body is JSON
-import:py from logging { Logger }
-import:jac from jivas.agent.action.interact_graph_walker { interact_graph_walker }
-import:jac from jivas.agent.core.agent { Agent }
-import:jac from jivas.agent.action.action { Action }
-import:jac from jivas.agent.action.actions { Actions }
+import logging;
+import json; # If body is JSON
+import from logging { Logger }
+import from jivas.agent.action.interact_graph_walker { interact_graph_walker }
+import from jivas.agent.core.agent { Agent }
+import from jivas.agent.action.action { Action }
+import from jivas.agent.action.actions { Actions }
+import from jac_cloud.plugin.jaseci { JacPlugin as Jac }
 
-walker gdrive_notification_receiver_walker :interact_graph_walker: {
+
+walker gdrive_notification_receiver_walker(interact_graph_walker) {
     static has logger:Logger = logging.getLogger(__name__);
 
     has headers:dict = {};

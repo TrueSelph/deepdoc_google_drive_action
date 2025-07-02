@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.1.0
+  - Updated to support Jivas 2.1.0
+
 ## 0.0.3 - Refined Watcher Logic & Stability
 
 - **Fixes:**

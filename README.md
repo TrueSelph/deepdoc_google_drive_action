@@ -3,9 +3,9 @@
 ## Package Information
 
 - **Name:** jivas/deepdoc_google_drive_action
-- **Author:** AA
+- **Author:** V75 Inc.
 - **Architype:** DeepDocGoogleDriveAction
-- **Version:** 0.0.3
+- **Version:** 0.1.0
 
 ## Meta Information
 
