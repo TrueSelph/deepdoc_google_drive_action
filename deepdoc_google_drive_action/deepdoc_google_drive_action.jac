@@ -7,7 +7,7 @@ import from logging { Logger }
 import from datetime { datetime, timedelta, timezone } # For expiration calculations
 import from typing { Union, List, Dict, Optional }
 import from jivas.agent.action.action { Action }
-import from jivas.agent.action.interact_graph_walker { interact_graph_walker }
+import from jivas.agent.action.agent_graph_walker { agent_graph_walker }
 import from .modules.google_drive_handler { GoogleDriveHandler }
 import from jivas.agent.modules.agentlib.utils { Utils }
 import from jvserve.lib.agent_interface { AgentInterface } # For webhook key generation

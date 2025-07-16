@@ -1,14 +1,14 @@
 # --- Walkers for DeepDocGoogleDriveAction UI interaction ---
 
 import from typing { List, Dict, Optional }
-import from jivas.agent.action.interact_graph_walker { interact_graph_walker }
+import from jivas.agent.action.agent_graph_walker { agent_graph_walker }
 import from jivas.agent.core.agent { Agent }
 import from jivas.agent.action.action { Action }
 import from jivas.agent.action.actions { Actions }
 
 
 # Walker to trigger ingestion of Drive items
-walker ingest_gdrive_items_walker(interact_graph_walker) {
+walker ingest_gdrive_items_walker(agent_graph_walker) {
     has drive_ids: List[str] = [];
     has item_type: str = "file"; # "file" or "folder"
     has user_metadata: Optional[Dict] = {};

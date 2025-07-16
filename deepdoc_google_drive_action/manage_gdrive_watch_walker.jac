@@ -1,10 +1,10 @@
 import from typing { List, Dict, Optional, Literal }
-import from jivas.agent.action.interact_graph_walker { interact_graph_walker }
+import from jivas.agent.action.agent_graph_walker { agent_graph_walker }
 import from jivas.agent.core.agent { Agent }
 import from jivas.agent.action.action { Action }
 import from jivas.agent.action.actions { Actions }
 
-walker manage_gdrive_watch_walker(interact_graph_walker) {
+walker manage_gdrive_watch_walker(agent_graph_walker) {
     has operation: Literal["start", "stop", "list", "renew", "recover"] = "list";
     has gdrive_resource_id: Optional[str] = None;
     has jiva_channel_uuid: Optional[str] = None; # Jiva's internal UUID for the watch
