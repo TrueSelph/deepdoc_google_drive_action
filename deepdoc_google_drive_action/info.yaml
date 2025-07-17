@@ -55,5 +55,5 @@ package:
   dependencies:
     jivas: ~2.1.0
     actions:
-      jivas/deepdoc_client_action: ~0.1.0
-      jivas/pulse_action: ~0.1.0
+      jivas/deepdoc_client_action: "~0.1.0"
+      jivas/pulse_action: "~0.1.0"
