@@ -10,7 +10,7 @@ import from jivas.agent.action.action { Action }
 import from jivas.agent.action.agent_graph_walker { agent_graph_walker }
 import from .modules.google_drive_handler { GoogleDriveHandler }
 import from jivas.agent.modules.agentlib.utils { Utils }
-import from jvserve.lib.agent_interface { AgentInterface } # For webhook key generation
+import from jvserve.lib.agent_interface { encrypt_webhook_key_exec }
 
 
 node DeepDocGoogleDriveAction(Action) {
@@ -152,10 +152,10 @@ node DeepDocGoogleDriveAction(Action) {
 
         if (effective_webhook_base_url.endswith('/')) { effective_webhook_base_url = effective_webhook_base_url[:-1]; }
 
-        webhook_key = AgentInterface.encrypt_webhook_key(
+        webhook_key = encrypt_webhook_key_exec(
             agent_id=agent_id, module_root=self.get_module_root(), walker="gdrive_notification_receiver_walker"
         );
-        full_webhook_url = f"{effective_webhook_base_url}/webhook/{webhook_key}";
+        full_webhook_url = f"{effective_webhook_base_url}/action/webhook/{webhook_key}";
 
         expiration_dt = datetime.now(timezone.utc) + timedelta(days=1); # Google's default max is often 1 day
         expiration_ms = int(expiration_dt.timestamp() * 1000);
