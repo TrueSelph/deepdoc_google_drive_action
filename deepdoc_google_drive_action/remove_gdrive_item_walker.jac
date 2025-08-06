@@ -11,6 +11,7 @@ import from jivas.agent.action.actions { Actions }
 walker remove_gdrive_item_walker(agent_graph_walker) {
     has google_drive_file_id: str = "";
     has response: Dict = {};
+    has reporting:bool = True;
 
     can on_agent with Agent entry {
         visit [-->](`?Actions);
@@ -22,5 +23,8 @@ walker remove_gdrive_item_walker(agent_graph_walker) {
         self.response = here.remove_drive_item_from_vector_store(
             google_drive_file_id=self.google_drive_file_id
         );
+        if self.reporting {
+            report self.response;
+        }
     }
 }

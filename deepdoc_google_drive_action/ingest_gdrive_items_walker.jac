@@ -13,6 +13,7 @@ walker ingest_gdrive_items_walker(agent_graph_walker) {
     has item_type: str = "file"; # "file" or "folder"
     has user_metadata: Optional[Dict] = {};
     has response: Dict = {};
+    has reporting:bool = True;
 
     can on_agent with Agent entry {
         visit [-->](`?Actions);
@@ -28,5 +29,9 @@ walker ingest_gdrive_items_walker(agent_graph_walker) {
             item_type=self.item_type,
             user_metadata=self.user_metadata
         );
+
+        if self.reporting {
+            report self.response;
+        }
     }
 }

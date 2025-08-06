@@ -2,9 +2,14 @@
 
 import json
 import math
+from typing import Any
 
+import requests
 import streamlit as st
-from jvclient.lib.utils import call_action_walker_exec  # Only this one is needed now
+from jvclient.lib.utils import (
+    call_api,
+    get_reports_payload,
+)
 from jvclient.lib.widgets import app_header, app_update_action
 
 
@@ -210,21 +215,23 @@ def render(
             parsed_user_metadata is not None
         ):  # Check if parsed_user_metadata is not None
             with st.spinner(f"Ingesting {ingest_type}(s): {', '.join(ids_list)}..."):
-                payload = {
-                    "drive_ids": ids_list,
-                    "item_type": item_type_arg,
-                    "user_metadata": parsed_user_metadata,
-                }
-                result_data = call_action_walker_exec(
-                    agent_id=agent_id,  # Changed from agent_jid
-                    module_root=module_root,
-                    walker="ingest_gdrive_items_walker",  # Changed from walker_name
-                    args=payload,  # Changed from payload
-                    # sync=True # jvcli call_action_walker_exec defaults to sync=True
+                result_data = call_api(
+                    endpoint="action/walker/deepdoc_google_drive_action/ingest_gdrive_items_walker",
+                    json_data={
+                        "agent_id": agent_id,
+                        "drive_ids": ids_list,
+                        "item_type": item_type_arg,
+                        "user_metadata": parsed_user_metadata,
+                    },
                 )
-                result = (
-                    result_data if result_data and isinstance(result_data, dict) else {}
-                )
+                result: dict[str, Any] = {}
+                if result_data and result_data.status_code == 200:
+                    result_payload = get_reports_payload(result_data)
+                    result = (
+                        result_payload
+                        if result_payload and isinstance(result_payload, dict)
+                        else {}
+                    )
 
                 if result:
                     st.write("Ingestion Results:")
@@ -293,6 +300,7 @@ def render(
                 f"Attempting to start watch on {st.session_state.gdrive_watch_resource_id}..."
             ):
                 payload = {
+                    "agent_id": agent_id,
                     "operation": "start",
                     "gdrive_resource_id": st.session_state.gdrive_watch_resource_id,
                     "resource_type": st.session_state.gdrive_watch_resource_type,  # Add the resource type to the payload
@@ -304,14 +312,19 @@ def render(
                         "Webhook Base URL is required to start a watch. Configure it in the section above or provide here."
                     )
                 else:
-                    result_data = call_action_walker_exec(
-                        agent_id, module_root, "manage_gdrive_watch_walker", payload
+                    result = {}
+                    result_data = call_api(
+                        endpoint="action/walker/deepdoc_google_drive_action/manage_gdrive_watch_walker",
+                        json_data=payload,
                     )
-                    result = (
-                        result_data
-                        if result_data and isinstance(result_data, dict)
-                        else {}
-                    )
+                    if result_data and result_data.status_code == 200:
+                        result_payload = get_reports_payload(result_data)
+                        result = (
+                            result_payload
+                            if result_payload and isinstance(result_payload, dict)
+                            else {}
+                        )
+
                     if result.get("status") == "succeeded":
                         st.success(
                             f"Watch started successfully! Jiva UUID: {result.get('jiva_channel_uuid')}"
@@ -344,15 +357,23 @@ def render(
                 f"Attempting to stop watch {st.session_state.gdrive_jiva_channel_uuid_to_stop}..."
             ):
                 payload = {
+                    "agent_id": agent_id,
                     "operation": "stop",
                     "jiva_channel_uuid": st.session_state.gdrive_jiva_channel_uuid_to_stop,
                 }
-                result_data = call_action_walker_exec(
-                    agent_id, module_root, "manage_gdrive_watch_walker", payload
+                result = {}
+                result_data = call_api(
+                    endpoint="action/walker/deepdoc_google_drive_action/manage_gdrive_watch_walker",
+                    json_data=payload,
                 )
-                result = (
-                    result_data if result_data and isinstance(result_data, dict) else {}
-                )
+                if result_data and result_data.status_code == 200:
+                    result_payload = get_reports_payload(result_data)
+                    result = (
+                        result_payload
+                        if result_payload and isinstance(result_payload, dict)
+                        else {}
+                    )
+
                 if result.get("status") == "succeeded":
                     st.success(result.get("message", "Watch stopped successfully."))
                     st.session_state[f"{model_key}_active_watches_cache"] = (
@@ -372,16 +393,22 @@ def render(
     # Use cached list if available
     if st.session_state.get(f"{model_key}_active_watches_cache") is None:
         with st.spinner("Fetching active watchers list..."):
-            list_payload = {"operation": "list"}
-            list_result_data = call_action_walker_exec(
-                agent_id, module_root, "manage_gdrive_watch_walker", list_payload
+            list_payload = {"agent_id": agent_id, "operation": "list"}
+            result = {}
+            result_data = call_api(
+                endpoint="action/walker/deepdoc_google_drive_action/manage_gdrive_watch_walker",
+                json_data=list_payload,
             )
-            list_result = (
-                list_result_data
-                if list_result_data and isinstance(list_result_data, dict)
-                else {}
-            )
-            st.session_state[f"{model_key}_active_watches_cache"] = list_result.get(
+
+            if result_data and result_data.status_code == 200:
+                result_payload = get_reports_payload(result_data)
+                result = (
+                    result_payload
+                    if result_payload and isinstance(result_payload, dict)
+                    else {}
+                )
+
+            st.session_state[f"{model_key}_active_watches_cache"] = result.get(
                 "active_watches", []
             )
 
@@ -407,20 +434,24 @@ def render(
                         f"Renewing watch {watch.get('jiva_channel_uuid')}..."
                     ):
                         renew_payload = {
+                            "agent_id": agent_id,
                             "operation": "renew",
                             "jiva_channel_uuid": watch.get("jiva_channel_uuid"),
                         }
-                        renew_res_data = call_action_walker_exec(
-                            agent_id,
-                            module_root,
-                            "manage_gdrive_watch_walker",
-                            renew_payload,
+                        renew_res: dict[str, Any] = {}
+
+                        renew_res_data = call_api(
+                            endpoint="action/walker/deepdoc_google_drive_action/manage_gdrive_watch_walker",
+                            json_data=renew_payload,
                         )
-                        renew_res = (
-                            renew_res_data
-                            if renew_res_data and isinstance(renew_res_data, dict)
-                            else {}
-                        )
+                        if renew_res_data and renew_res_data.status_code == 200:
+                            result_payload = get_reports_payload(renew_res_data)
+                            renew_res = (
+                                result_payload
+                                if result_payload and isinstance(result_payload, dict)
+                                else {}
+                            )
+
                         if renew_res.get("status") == "succeeded":
                             st.success(
                                 f"Renewal initiated for {watch.get('jiva_channel_uuid')}. New Jiva UUID: {renew_res.get('jiva_channel_uuid')}"
@@ -456,17 +487,26 @@ def render(
                 )
             else:
                 recover_payload = {
+                    "agent_id": agent_id,
                     "operation": "recover",
                     "webhook_base_url": webhook_base_for_recovery,
                 }
-                recover_result_data = call_action_walker_exec(
-                    agent_id, module_root, "manage_gdrive_watch_walker", recover_payload
+
+                recover_result: dict[str, Any] = {}
+
+                recover_result_data = call_api(
+                    endpoint="action/walker/deepdoc_google_drive_action/manage_gdrive_watch_walker",
+                    json_data=recover_payload,
                 )
-                recover_result = (
-                    recover_result_data
-                    if recover_result_data and isinstance(recover_result_data, dict)
-                    else {}
-                )
+
+                if recover_result_data and recover_result_data.status_code == 200:
+                    result_payload = get_reports_payload(recover_result_data)
+                    recover_result = (
+                        result_payload
+                        if result_payload and isinstance(result_payload, dict)
+                        else {}
+                    )
+
                 st.write("Recovery Attempt Results:")
                 st.json(recover_result)
                 st.session_state[f"{model_key}_active_watches_cache"] = (
@@ -480,16 +520,22 @@ def render(
     # Fetch all documents once
     if f"{model_key}_all_ingested_docs" not in st.session_state:
         with st.spinner("Loading all ingested Google Drive documents..."):
-            result_data = call_action_walker_exec(
-                agent_id=agent_id,  # Changed from agent_jid
-                module_root=module_root,
-                walker="get_ingested_gdrive_docs_walker",  # Changed from walker_name
-                args={},  # Changed from payload
+            ingested_data: list[str] = []
+
+            ingested_result: requests.Response = call_api(
+                endpoint="action/walker/deepdoc_google_drive_action/get_ingested_gdrive_docs_walker",
+                json_data={"agent_id": agent_id},
             )
+            if ingested_result and ingested_result.status_code == 200:
+                result_payload = get_reports_payload(ingested_result)
+                ingested_data = (
+                    result_payload
+                    if result_payload and isinstance(result_payload, list)
+                    else []
+                )
+
             # Store the full list in session state
-            st.session_state[f"{model_key}_all_ingested_docs"] = (
-                result_data if result_data and isinstance(result_data, list) else []
-            )
+            st.session_state[f"{model_key}_all_ingested_docs"] = ingested_data
             # Reset current page if data is reloaded
             st.session_state[f"{model_key}_current_page_ingested"] = 1
 
@@ -593,18 +639,22 @@ def render(
                     with st.spinner(
                         f"Requesting re-ingestion for {gdrive_filename}..."
                     ):
-                        del_payload = {"google_drive_file_id": gdrive_file_id}
-                        del_result_data = call_action_walker_exec(
-                            agent_id,
-                            module_root,
-                            "remove_gdrive_item_walker",
-                            del_payload,
+                        del_payload = {
+                            "google_drive_file_id": gdrive_file_id,
+                            "agent_id": agent_id,
+                        }
+                        del_res = {}
+                        del_result_data = call_api(
+                            endpoint="action/walker/deepdoc_google_drive_action/remove_gdrive_item_walker",
+                            payload=del_payload,
                         )
-                        del_res = (
-                            del_result_data
-                            if del_result_data and isinstance(del_result_data, dict)
-                            else {}
-                        )
+                        if del_result_data and del_result_data.status_code == 200:
+                            del_res = get_reports_payload(del_result_data)
+                            del_res = (
+                                result_payload
+                                if result_payload and isinstance(result_payload, dict)
+                                else {}
+                            )
 
                         if del_res and del_res.get("status") == "succeeded":
                             st.info(
@@ -620,22 +670,28 @@ def render(
                             original_metadata.pop("source_system", None)
 
                             ingest_payload = {
+                                "agent_id": agent_id,
                                 "drive_ids": [gdrive_file_id],
                                 "item_type": "file",
                                 "user_metadata": original_metadata,
                             }
-                            ingest_result_data = call_action_walker_exec(
-                                agent_id,
-                                module_root,
-                                "ingest_gdrive_items_walker",
-                                ingest_payload,
+
+                            ingest_res: dict[str, Any] = {}
+                            ingest_result_data = call_api(
+                                endpoint="action/walker/deepdoc_google_drive_action/ingest_gdrive_items_walker",
+                                json_data=ingest_payload,
                             )
-                            ingest_res = (
+                            if (
                                 ingest_result_data
-                                if ingest_result_data
-                                and isinstance(ingest_result_data, dict)
-                                else {}
-                            )
+                                and ingest_result_data.status_code == 200
+                            ):
+                                del_res = get_reports_payload(ingest_result_data)
+                                ingest_res = (
+                                    result_payload
+                                    if result_payload
+                                    and isinstance(result_payload, dict)
+                                    else {}
+                                )
 
                             if ingest_res and ingest_res.get("succeeded"):
                                 st.success(
@@ -656,19 +712,23 @@ def render(
             with col3:
                 if st.button("Remove from Store", key=f"delete_{item_unique_id}"):
                     with st.spinner(f"Removing {gdrive_filename} from vector store..."):
-                        payload = {"google_drive_file_id": gdrive_file_id}
-                        delete_result_data = call_action_walker_exec(
-                            agent_id=agent_id,
-                            module_root=module_root,
-                            walker="remove_gdrive_item_walker",
-                            args=payload,
+                        payload = {
+                            "google_drive_file_id": gdrive_file_id,
+                            "agent_id": agent_id,
+                        }
+
+                        delete_result: dict[str, Any] = {}
+                        delete_result_data = call_api(
+                            endpoint="action/walker/deepdoc_google_drive_action/remove_gdrive_item_walker",
+                            json_data=payload,
                         )
-                        delete_result = (
-                            delete_result_data
-                            if delete_result_data
-                            and isinstance(delete_result_data, dict)
-                            else {}
-                        )
+                        if delete_result_data and delete_result_data.status_code == 200:
+                            del_res = get_reports_payload(delete_result_data)
+                            delete_result = (
+                                result_payload
+                                if result_payload and isinstance(result_payload, dict)
+                                else {}
+                            )
 
                         if delete_result and delete_result.get("status") == "succeeded":
                             st.success(delete_result.get("message"))
@@ -713,19 +773,21 @@ def render(
                 payload = {
                     "google_drive_folder_id": st.session_state[
                         gdrive_folder_to_clear_input_key
-                    ]
+                    ],
+                    "agent_id": agent_id,
                 }
-                clear_result_data = call_action_walker_exec(
-                    agent_id=agent_id,
-                    module_root=module_root,
-                    walker="clear_gdrive_folder_walker",
-                    args=payload,
+                clear_result_data = call_api(
+                    endpoint="action/walker/deepdoc_google_drive_action/clear_gdrive_folder_walker",
+                    json_data=payload,
                 )
-                clear_result = (
-                    clear_result_data
-                    if clear_result_data and isinstance(clear_result_data, dict)
-                    else {}
-                )
+
+                if clear_result_data and clear_result_data.status_code == 200:
+                    del_res = get_reports_payload(clear_result_data)
+                    clear_result = (
+                        result_payload
+                        if result_payload and isinstance(result_payload, dict)
+                        else {}
+                    )
 
                 if clear_result:
                     st.info(clear_result.get("message", "Clear operation finished."))

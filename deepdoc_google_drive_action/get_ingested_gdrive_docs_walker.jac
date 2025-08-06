@@ -10,6 +10,7 @@ import from jivas.agent.action.actions { Actions }
 # Walker to get documents ingested from Google Drive (from DeepDoc manifest)
 walker get_ingested_gdrive_docs_walker(agent_graph_walker) {
     has response: List = []; # Will be a list of dicts or list containing an error dict
+    has reporting:bool = True;
 
     can on_agent with Agent entry {
         visit [-->](`?Actions);
@@ -19,5 +20,8 @@ walker get_ingested_gdrive_docs_walker(agent_graph_walker) {
     }
     can on_google_drive_action with Action entry {
         self.response = here.get_ingested_documents_from_drive();
+        if self.reporting {
+            report self.response;
+        }
     }
 }

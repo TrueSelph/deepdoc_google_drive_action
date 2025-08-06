@@ -11,6 +11,7 @@ import from jivas.agent.action.actions { Actions }
 walker list_gdrive_folder_contents_walker(agent_graph_walker) {
     has folder_id: str = "";
     has response: List = [];
+    has reporting:bool = True;
 
     can on_agent with Agent entry {
         visit [-->](`?Actions);
@@ -20,5 +21,8 @@ walker list_gdrive_folder_contents_walker(agent_graph_walker) {
     }
     can on_google_drive_action with Action entry {
         self.response = here.list_gdrive_folder_contents(folder_id=self.folder_id);
+        if self.reporting {
+            report self.response;
+        }
     }
 }

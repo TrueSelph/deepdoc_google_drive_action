@@ -11,6 +11,7 @@ import from jivas.agent.action.actions { Actions }
 walker clear_gdrive_folder_walker(agent_graph_walker) {
     has google_drive_folder_id: str = "";
     has response: Dict = {};
+    has reporting:bool = True;
 
     can on_agent with Agent entry {
         visit [-->](`?Actions);
@@ -22,5 +23,8 @@ walker clear_gdrive_folder_walker(agent_graph_walker) {
         self.response = here.remove_drive_folder_from_vector_store(
             google_drive_folder_id=self.google_drive_folder_id
         );
+        if self.reporting {
+            report self.response;
+        }
     }
 }

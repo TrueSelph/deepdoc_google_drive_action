@@ -12,6 +12,7 @@ walker manage_gdrive_watch_walker(agent_graph_walker) {
     has resource_type: Optional[str] = None; # resource type to be monitored
 
     has response: Dict = {};
+    has reporting:bool = True;
 
     can on_agent with Agent entry {
         visit [-->](`?Actions);
@@ -48,6 +49,10 @@ walker manage_gdrive_watch_walker(agent_graph_walker) {
              self.response = here.recover_watches(webhook_base_url=self.webhook_base_url); # webhook_base_url might be needed if stored globally
         } else {
             self.response = {"status": "failed", "message": f"Unknown operation: {self.operation}"};
+        }
+
+        if self.reporting {
+            report self.response;
         }
     }
 }
