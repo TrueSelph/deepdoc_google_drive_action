@@ -1,0 +1,59 @@
+package:
+  name: jivas/deepdoc_google_drive_action
+  author: AA
+  archetype: DeepDocGoogleDriveAction
+  version: 0.1.0
+  meta:
+    title: DeepDoc Google Drive Integration Action (with Watcher)
+    description: Ingests, manages, and watches documents/folders from Google Drive using DeepDoc client for vector storage and processing. Reacts to GDrive changes.
+    group: integration
+    type: action
+  config:
+    singleton: true
+    # --- Watcher Configuration (New for 0.0.2) ---
+    # List of GDrive resources the action should persistently try to watch.
+    # Each item is a dictionary, e.g., {"gdrive_id": "your_folder_or_file_id"}
+    # The 'type' ("file" or "folder") is for future use/clarity, not currently used by recovery logic.
+    watched_gdrive_resources: []
+
+    # --- New for v0.0.3 ---
+    auto_watch_on_ingest: true # Default value
+    # Publicly accessible base URL of your Jiva instance for Google Drive webhooks.
+    # If empty, action will try to use JIVAS_BASE_URL environment variable.
+    default_webhook_base_url: ""
+
+    # How often (in seconds) the pulse ability should run to check and renew watch channels.
+    pulse_interval_seconds: 3600
+
+    # Renew watch channels if their expiration is within this many hours.
+    renew_threshold_hours: 6
+
+    # --- Original Configuration ---
+    # Default Google Drive folder ID to operate on if none is specified in walker calls.
+    default_folder_id: ""
+
+    # The label of the DeepDocClientAction instance used by this agent.
+    deepdoc_action_label: "DeepDocClientAction"
+
+    # Google API scopes. For watching and reading, 'drive.readonly' is usually enough.
+    # If Drive modifications were added, this would need to expand.
+    scopes: ["https://www.googleapis.com/auth/drive.readonly"]
+
+    # --- Service Account Credentials (MUST be configured in agent DAF) ---
+    info_type: "service_account"
+    project_id: ""
+    private_key_id: ""
+    private_key: "" # Multiline YAML string, ensure '\n' are literal or use '|-'
+    client_email: ""
+    client_id: ""
+    auth_uri: "https://accounts.google.com/o/oauth2/auth"
+    token_uri: "https://oauth2.googleapis.com/token"
+    auth_provider_x509_cert_url: "https://www.googleapis.com/oauth2/v1/certs"
+    client_x509_cert_url: "" # e.g., "https://www.googleapis.com/robot/v1/metadata/x509/your-client-email.iam.gserviceaccount.com"
+    universe_domain: "googleapis.com"
+
+  dependencies:
+    jivas: ~2.1.0
+    actions:
+      jivas/deepdoc_client_action: "~0.1.0"
+      jivas/pulse_action: "~0.1.0"
