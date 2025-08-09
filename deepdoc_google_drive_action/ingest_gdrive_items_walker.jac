@@ -1,6 +1,7 @@
 # --- Walkers for DeepDocGoogleDriveAction UI interaction ---
 
 import from typing { List, Dict, Optional }
+import from jivas.agent.modules.action.path { action_walker_path }
 import from jivas.agent.action.agent_graph_walker { agent_graph_walker }
 import from jivas.agent.core.agent { Agent }
 import from jivas.agent.action.action { Action }
@@ -15,13 +16,20 @@ walker ingest_gdrive_items_walker(agent_graph_walker) {
     has response: Dict = {};
     has reporting:bool = True;
 
+    class __specs__ {
+        static has private: bool = False;
+        static has path: str = action_walker_path(__module__);
+    }
+
     can on_agent with Agent entry {
         visit [-->](`?Actions);
     }
+
     can on_actions with Actions entry {
         # Find the specific DeepDocGoogleDriveAction instance
         visit [-->](`?Action)(?enabled==True)(?label=='DeepDocGoogleDriveAction'); # Assuming default label. If action was renamed please change here
     }
+
     can on_google_drive_action with Action entry {
         # Call the ingest_drive_items ability
         self.response = here.ingest_drive_items(

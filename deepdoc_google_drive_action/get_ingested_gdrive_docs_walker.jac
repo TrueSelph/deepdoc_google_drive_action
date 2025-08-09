@@ -2,6 +2,7 @@
 
 import from typing { List, Dict, Optional }
 import from jivas.agent.action.agent_graph_walker { agent_graph_walker }
+import from jivas.agent.modules.action.path { action_walker_path }
 import from jivas.agent.core.agent { Agent }
 import from jivas.agent.action.action { Action }
 import from jivas.agent.action.actions { Actions }
@@ -11,6 +12,11 @@ import from jivas.agent.action.actions { Actions }
 walker get_ingested_gdrive_docs_walker(agent_graph_walker) {
     has response: List = []; # Will be a list of dicts or list containing an error dict
     has reporting:bool = True;
+
+    class __specs__ {
+        static has private: bool = False;
+        static has path: str = action_walker_path(__module__);
+    }
 
     can on_agent with Agent entry {
         visit [-->](`?Actions);

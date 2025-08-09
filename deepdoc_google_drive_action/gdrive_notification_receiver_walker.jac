@@ -2,6 +2,7 @@ import logging;
 import json; # If body is JSON
 import from logging { Logger }
 import from jivas.agent.action.agent_graph_walker { agent_graph_walker }
+import from jivas.agent.modules.action.path { action_walker_path }
 import from jivas.agent.core.agent { Agent }
 import from jivas.agent.action.action { Action }
 import from jivas.agent.action.actions { Actions }
@@ -15,6 +16,11 @@ walker gdrive_notification_receiver_walker(agent_graph_walker) {
     has params:dict = {}; # For query params if any
     has body:dict = {};   # Raw request body
     has response:dict = {"status": "received"}; # Default response to Google
+
+    class __specs__ {
+        static has private: bool = False;
+        static has path: str = action_walker_path(__module__);
+    }
 
     can on_agent with Agent entry {
         self.logger.warning(f"Headers: {self.headers}, Params: {self.params}, Body: {self.body}");

@@ -1,10 +1,11 @@
 # --- Walkers for DeepDocGoogleDriveAction UI interaction ---
 
 import from typing { List, Dict, Optional }
-import from jivas.agent.action.agent_graph_walker { agent_graph_walker }
 import from jivas.agent.core.agent { Agent }
 import from jivas.agent.action.action { Action }
 import from jivas.agent.action.actions { Actions }
+import from jivas.agent.modules.action.path { action_walker_path }
+import from jivas.agent.action.agent_graph_walker { agent_graph_walker }
 
 
 # Walker to remove all items from a Drive folder from the vector store
@@ -12,6 +13,11 @@ walker clear_gdrive_folder_walker(agent_graph_walker) {
     has google_drive_folder_id: str = "";
     has response: Dict = {};
     has reporting:bool = True;
+
+    class __specs__ {
+        static has private: bool = False;
+        static has path: str = action_walker_path(__module__);
+    }
 
     can on_agent with Agent entry {
         visit [-->](`?Actions);
